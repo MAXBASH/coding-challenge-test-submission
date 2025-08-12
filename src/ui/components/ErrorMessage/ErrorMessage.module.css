@@ -1,0 +1,20 @@
+.error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: #fdecea;
+    border: 1px solid #f5c2c0;
+    border-radius: 4px;
+    color: #b71c1c;
+    font-size: 0.9rem;
+}
+
+.icon {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.text {
+    flex: 1;
+}

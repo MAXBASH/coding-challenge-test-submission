@@ -12,17 +12,28 @@ const initialState: CounterState = {
   addresses: [],
 };
 
+const normalize = (s?: string) => (s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+
 export const addressBookSlice = createSlice({
   name: "address",
   // `createSlice` will infer the state type from the `initialState` argument
   initialState,
   reducers: {
     addAddress: (state, action: PayloadAction<Address>) => {
-      /** TODO: Prevent duplicate addresses */
-      state.addresses.push(action.payload);
+      const incoming = action.payload;
+      const exists = state.addresses.some((a) => {
+        if (a.id === incoming.id) return true;
+        // If both have a `line` field, compare normalized values to avoid subtle dupes
+        const hasLine = (obj: any): obj is { line: string } => obj && typeof obj.line === "string";
+        if (hasLine(a) && hasLine(incoming)) {
+          return normalize(a.line) === normalize(incoming.line);
+        }
+        return false;
+      });
+      if (!exists) state.addresses.push(incoming);
     },
     removeAddress: (state, action: PayloadAction<string>) => {
-      /** TODO: Write a state update which removes an address from the addresses array. */
+      state.addresses = state.addresses.filter((a) => a.id !== action.payload);
     },
     updateAddresses: (state, action: PayloadAction<Address[]>) => {
       state.addresses = action.payload;

@@ -23,3 +23,46 @@
 /** TODO: Create separate styles for .primary and .secondary variants of this button:
 * - Must use the CSS variables declared in App.css
 */
+
+/* --- Variants --- */
+.primary {
+  background: var(--color-brand, #413ef7);
+  color: #fff;
+  border: 2px solid var(--color-brand, #413ef7);
+}
+
+.secondary {
+  background: transparent;
+  color: var(--color-brand, #413ef7);
+  border: 2px solid var(--color-brand, #413ef7);
+}
+
+.button:focus-visible {
+  outline: 3px solid var(--color-brand, #413ef7);
+  outline-offset: 2px;
+}
+
+.button[disabled] {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* --- Loading spinner --- */
+.spinner {
+  display: inline-block;
+  inline-size: 1em;
+  block-size: 1em;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: btn-spin 0.75s linear infinite;
+  margin-right: 0.5rem;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Optional label wrapper to keep spacing consistent */
+.label { display: inline-flex; align-items: center; }

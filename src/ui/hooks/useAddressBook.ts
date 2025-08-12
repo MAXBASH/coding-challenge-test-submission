@@ -16,7 +16,8 @@ export default function useAddressBook() {
   const addresses = useAppSelector(selectAddress);
   const [loading, setLoading] = React.useState(true);
 
-  const updateDatabase = React.useCallback(() => {
+  // Persist address book whenever it changes
+  React.useEffect(() => {
     databaseService.setItem("addresses", addresses);
   }, [addresses]);
 
@@ -24,28 +25,25 @@ export default function useAddressBook() {
     /** Add address to the redux store */
     addAddress: (address: Address) => {
       dispatch(addAddress(address));
-      updateDatabase();
     },
     /** Remove address by ID from the redux store */
     removeAddress: (id: string) => {
       dispatch(removeAddress(id));
-      updateDatabase();
     },
     /** Loads saved addresses from the indexedDB */
     loadSavedAddresses: async () => {
-      const saved: RawAddressModel[] | null = await databaseService.getItem(
-        "addresses"
-      );
-      // No saved item found, exit this function
-      if (!saved || !Array.isArray(saved)) {
+      try {
+        const saved: RawAddressModel[] | null = await databaseService.getItem("addresses");
+        if (saved && Array.isArray(saved)) {
+          dispatch(updateAddresses(saved.map((address) => transformAddress(address))));
+        }
+      } catch (err) {
+        // Optionally log or surface the error; keeping silent per challenge scope
+      } finally {
         setLoading(false);
-        return;
       }
-      dispatch(
-        updateAddresses(saved.map((address) => transformAddress(address)))
-      );
-      setLoading(false);
     },
     loading,
+    addresses,
   };
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { useAppSelector } from "../../../core/store/hooks";
+import { useAppSelector } from "../../../core/store";
 
 import useAddressBook from "../../hooks/useAddressBook";
 import Address from "../Address/Address";
@@ -21,23 +21,28 @@ const AddressBook = () => {
   return (
     <section className={$.addressBook}>
       <h2>{addressBookTitle}</h2>
-      {!loading && (
+
+      {loading ? (
+        <p aria-live="polite">Loading saved addresses…</p>
+      ) : (
         <>
-          {addresses.length === 0 && <p>No addresses found, try add one 😉</p>}
+          {addresses.length === 0 && (
+            <p>No addresses found, try add one 😉</p>
+          )}
           {addresses.map((address, index) => {
+            const fullName = `${address.firstName} ${address.lastName}`.trim();
             return (
               <Card key={address.id}>
                 <div data-testid={`address-${index}`} className={$.item}>
                   <div>
-                    <h3>
-                      {address.firstName} {address.lastName}
-                    </h3>
+                    <h3>{fullName}</h3>
                     <Address {...address} />
                   </div>
                   <div className={$.remove}>
                     <Button
                       variant="secondary"
                       onClick={() => removeAddress(address.id)}
+                      aria-label={`Remove ${fullName} from address book`}
                     >
                       Remove
                     </Button>

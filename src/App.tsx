@@ -6,10 +6,17 @@ import Button from "@/components/Button/Button";
 import InputText from "@/components/InputText/InputText";
 import Radio from "@/components/Radio/Radio";
 import Section from "@/components/Section/Section";
+import ErrorMessage from "@/components/ErrorMessage/ErrorMessage";
 import useAddressBook from "@/hooks/useAddressBook";
+import { useFormFields } from "@/hooks/useFormFields";
 
 import styles from "./App.module.css";
 import { Address as AddressType } from "./types";
+
+// Ensures houseNumber is present on each address from the API
+function transformAddress(addr: any, houseNumber: string): AddressType {
+  return { ...(addr as any), houseNumber } as AddressType;
+}
 
 function App() {
   /**
@@ -20,39 +27,30 @@ function App() {
    * - Remove all individual React.useState
    * - Remove all individual onChange handlers, like handlePostCodeChange for example
    */
-  const [postCode, setPostCode] = React.useState("");
-  const [houseNumber, setHouseNumber] = React.useState("");
-  const [firstName, setFirstName] = React.useState("");
-  const [lastName, setLastName] = React.useState("");
+  const { fields, onChange, reset } = useFormFields({
+    postCode: "",
+    houseNumber: "",
+    firstName: "",
+    lastName: "",
+  });
   const [selectedAddress, setSelectedAddress] = React.useState("");
   /**
    * Results states
    */
   const [error, setError] = React.useState<undefined | string>(undefined);
   const [addresses, setAddresses] = React.useState<AddressType[]>([]);
+  const [isFetchingAddresses, setIsFetchingAddresses] = React.useState(false);
   /**
    * Redux actions
    */
   const { addAddress } = useAddressBook();
 
-  /**
-   * Text fields onChange handlers
-   */
-  const handlePostCodeChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setPostCode(e.target.value);
-
-  const handleHouseNumberChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setHouseNumber(e.target.value);
-
-  const handleFirstNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setFirstName(e.target.value);
-
-  const handleLastNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setLastName(e.target.value);
-
   const handleSelectedAddressChange = (
     e: React.ChangeEvent<HTMLInputElement>
-  ) => setSelectedAddress(e.target.value);
+  ) => {
+    console.log("-------setSelectedAddress----", e.target.value);
+    setSelectedAddress(e.target.value);
+  }
 
   /** TODO: Fetch addresses based on houseNumber and postCode using the local BE api
    * - Example URL of API: ${process.env.NEXT_PUBLIC_URL}/api/getAddresses?postcode=1345&streetnumber=350
@@ -63,15 +61,68 @@ function App() {
    * - Ensure to clear previous search results on each click
    * - Bonus: Add a loading state in the UI while fetching addresses
    */
-  const handleAddressSubmit = async (e: React.ChangeEvent<HTMLFormElement>) => {
+  const handleAddressSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Clear previous UI states
+    setError(undefined);
+    setAddresses([]);
+    setSelectedAddress("");
+
+    // --- Step 7: Basic validations for Find Address form ---
+    const trimmedPostCode = fields.postCode.trim();
+    const trimmedHouseNumber = fields.houseNumber.trim();
+
+    if (!trimmedHouseNumber) {
+      setError("House number is required.");
+      return;
+    }
+
+    if (!trimmedPostCode || !/^\d{3,4}$/.test(trimmedPostCode)) {
+      setError("Please enter a valid numeric postcode (3–4 digits).");
+      return;
+    }
+
+    try {
+      setIsFetchingAddresses(true);
+
+      const base = process.env.NEXT_PUBLIC_URL ?? "";
+      const params = new URLSearchParams({
+        postcode: trimmedPostCode,
+        streetnumber: trimmedHouseNumber,
+      });
+      const url = `${base}/api/getAddresses?${params.toString()}`;
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch addresses (${res.status})`);
+      }
+
+      const data = await res.json();
+      const raw = Array.isArray(data) ? data : data?.details || [];
+      console.log("------raw--", raw)
+      const transformed = raw.map((a: any) => transformAddress(a, trimmedHouseNumber));
+      console.log("-------", transformed);
+      setAddresses(transformed);
+    } catch (err) {
+      setError((err as Error).message || "Failed to fetch addresses.");
+      setAddresses([]);
+    } finally {
+      setIsFetchingAddresses(false);
+    }
   };
 
   /** TODO: Add basic validation to ensure first name and last name fields aren't empty
    * Use the following error message setError("First name and last name fields mandatory!")
    */
-  const handlePersonSubmit = (e: React.ChangeEvent<HTMLFormElement>) => {
+  const handlePersonSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // --- Step 7: Basic validations for Personal Info form ---
+    if (!fields.firstName.trim() || !fields.lastName.trim()) {
+      setError("First name and last name fields mandatory!");
+      return;
+    }
 
     if (!selectedAddress || !addresses.length) {
       setError(
@@ -89,7 +140,15 @@ function App() {
       return;
     }
 
-    addAddress({ ...foundAddress, firstName, lastName });
+    addAddress({ ...foundAddress, firstName: fields.firstName, lastName: fields.lastName });
+  };
+
+  // --- Step 6: Clear all fields, results, and errors ---
+  const handleClearAll = () => {
+    reset();
+    setSelectedAddress("");
+    setAddresses([]);
+    setError(undefined);
   };
 
   return (
@@ -109,20 +168,22 @@ function App() {
             <div className={styles.formRow}>
               <InputText
                 name="postCode"
-                onChange={handlePostCodeChange}
+                onChange={onChange}
                 placeholder="Post Code"
-                value={postCode}
+                value={fields.postCode}
               />
             </div>
             <div className={styles.formRow}>
               <InputText
                 name="houseNumber"
-                onChange={handleHouseNumberChange}
-                value={houseNumber}
+                onChange={onChange}
+                value={fields.houseNumber}
                 placeholder="House number"
               />
             </div>
-            <Button type="submit">Find</Button>
+            <Button type="submit" loading={isFetchingAddresses}>
+              Find
+            </Button>
           </fieldset>
         </form>
         {addresses.length > 0 &&
@@ -132,7 +193,10 @@ function App() {
                 name="selectedAddress"
                 id={address.id}
                 key={address.id}
-                onChange={handleSelectedAddressChange}
+                onChange={(e) => {
+                  console.log("-------onchanges addre----", e.target.value);
+                  handleSelectedAddressChange(e)
+                }}
               >
                 <Address {...address} />
               </Radio>
@@ -147,16 +211,16 @@ function App() {
                 <InputText
                   name="firstName"
                   placeholder="First name"
-                  onChange={handleFirstNameChange}
-                  value={firstName}
+                  onChange={onChange}
+                  value={fields.firstName}
                 />
               </div>
               <div className={styles.formRow}>
                 <InputText
                   name="lastName"
                   placeholder="Last name"
-                  onChange={handleLastNameChange}
-                  value={lastName}
+                  onChange={onChange}
+                  value={fields.lastName}
                 />
               </div>
               <Button type="submit">Add to addressbook</Button>
@@ -165,14 +229,16 @@ function App() {
         )}
 
         {/* TODO: Create an <ErrorMessage /> component for displaying an error message */}
-        {error && <div className="error">{error}</div>}
-
-        {/* TODO: Add a button to clear all form fields. 
-        Button must look different from the default primary button, see design. 
-        Button text name must be "Clear all fields"
-        On Click, it must clear all form fields, remove all search results and clear all prior
-        error messages
-        */}
+        <ErrorMessage message={error} />
+        <div style={{ marginTop: 8 }}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleClearAll}
+          >
+            Clear all fields
+          </Button>
+        </div>
       </Section>
 
       <Section variant="dark">

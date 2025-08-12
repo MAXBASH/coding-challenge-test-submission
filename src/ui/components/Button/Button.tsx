@@ -4,7 +4,7 @@ import React, { FunctionComponent } from "react";
 import $ from "./Button.module.css";
 
 interface ButtonProps {
-  onClick?: () => void;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
   type?: ButtonType;
   variant?: ButtonVariant;
   loading?: boolean;
@@ -18,17 +18,27 @@ const Button: FunctionComponent<ButtonProps> = ({
   variant = "primary",
   loading = false,
 }) => {
+  // Build class list with variant condition
+  const classes = [
+    $.button,
+    variant === "secondary" ? $.secondary : $.primary, // default to primary
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <button
-      // TODO: Add conditional classNames
-      // - Must have a condition to set the '.primary' className
-      // - Must have a condition to set the '.secondary' className
-      // - Display loading spinner per demo video. NOTE: add data-testid="loading-spinner" for spinner element (used for grading)
-      className={$.button}
+      className={classes}
       type={type}
       onClick={onClick}
+      disabled={loading}
+      aria-busy={loading}
     >
-      {children}
+      {/* Display loading spinner per demo video */}
+      {loading && (
+        <span className={$.spinner} data-testid="loading-spinner" aria-hidden="true" />
+      )}
+      <span className={$.label}>{children}</span>
     </button>
   );
 };

@@ -1,22 +1,26 @@
 import React, { FunctionComponent } from 'react';
+import type { ComponentProps } from 'react';
 
 import Button from '../Button/Button';
 import InputText from '../InputText/InputText';
 import $ from './Form.module.css';
 
+// Use the real props of InputText so extraProps matches what the component accepts
+type InputTextProps = ComponentProps<typeof InputText>;
+
 interface FormEntry {
   name: string;
   placeholder: string;
-  // TODO: Defined a suitable type for extra props
-  // This type should cover all different of attribute types
-  extraProps: any;
+  // Covers strings, numbers, booleans, event handlers, etc., from InputText
+  // Prevent duplicate keys by omitting name/placeholder (they're provided above)
+  extraProps?: Omit<InputTextProps, 'name' | 'placeholder'>;
 }
 
-interface FormProps {
+interface FormProps extends React.FormHTMLAttributes<HTMLFormElement> {
   label: string;
   loading: boolean;
   formEntries: FormEntry[];
-  onFormSubmit: () => void;
+  onFormSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   submitText: string;
 }
 
@@ -25,10 +29,11 @@ const Form: FunctionComponent<FormProps> = ({
   loading,
   formEntries,
   onFormSubmit,
-  submitText
+  submitText,
+  ...rest
 }) => {
   return (
-    <form onSubmit={onFormSubmit}>
+    <form onSubmit={onFormSubmit} {...rest}>
       <fieldset>
         <legend>{label}</legend>
         {formEntries.map(({ name, placeholder, extraProps }, index) => (
@@ -37,7 +42,7 @@ const Form: FunctionComponent<FormProps> = ({
               key={`${name}-${index}`}
               name={name}
               placeholder={placeholder}
-              {...extraProps}
+              {...(extraProps || {})}
             />
           </div>
         ))}
