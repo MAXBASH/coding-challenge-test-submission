@@ -100,9 +100,15 @@ function App() {
 
       const data = await res.json();
       const raw = Array.isArray(data) ? data : data?.details || [];
-      console.log("------raw--", raw)
-      const transformed = raw.map((a: any) => transformAddress(a, trimmedHouseNumber));
-      console.log("-------", transformed);
+      console.log("---raw--", raw)
+      const transformed = raw.map((a: any, i: number) => {
+        const streetNumber = String(i + 1);
+        const withHN = transformAddress(a, streetNumber);
+        const id = (withHN as any).id ?? `${trimmedHouseNumber}-${trimmedPostCode}-${i}`;
+        console.log("-------id-----", id)
+        return { ...withHN, id } as AddressType;
+      });
+      console.log("-------transformed-----", transformed)
       setAddresses(transformed);
     } catch (err) {
       setError((err as Error).message || "Failed to fetch addresses.");
@@ -134,7 +140,7 @@ function App() {
     const foundAddress = addresses.find(
       (address) => address.id === selectedAddress
     );
-
+console.log("-------foundAddress---", foundAddress)
     if (!foundAddress) {
       setError("Selected address not found");
       return;
@@ -193,10 +199,9 @@ function App() {
                 name="selectedAddress"
                 id={address.id}
                 key={address.id}
-                onChange={(e) => {
-                  console.log("-------onchanges addre----", e.target.value);
-                  handleSelectedAddressChange(e)
-                }}
+                value={address.id}
+                checked={selectedAddress === address.id}
+                onChange={handleSelectedAddressChange}
               >
                 <Address {...address} />
               </Radio>
